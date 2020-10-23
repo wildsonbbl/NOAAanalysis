@@ -132,96 +132,59 @@ NOAAdata0510 <- NOAAdata0510 %>%
 
 #### Across the United States, which types of events are most harmful with respect to population health?  
 
-First, a general look at the United States at total injuries and fatalities for each type of event during the period from 2005 to 2010. A summary and bar plots are appropriate to see this.  
+First, a general look at the United States at total injuries and fatalities for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this.  
 
 ```{r cache=T}
 health <- NOAAdata0510 %>% group_by(EVTYPE) %>%
-        summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES) ) %>% 
-        filter(Injuries > 100)  
+        summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES) )
 
-summary(health)[,2:3]  
+forplot1 <- health %>% arrange(desc(Injuries)) %>% head(n = 4)
+forplot2 <- health %>% arrange(desc(Fatalities)) %>% head(n = 4)
 
-plt1<- ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
-        geom_bar(stat='identity') +
-        theme_bw() +
-        scale_x_discrete(labels=NULL) + 
-  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
+plt1<- ggplot(forplot1, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) +
+  geom_col() + theme_bw() +
+  scale_x_discrete(labels=NULL) + labs(x = '') +
+  theme(legend.text = element_text(size=6),legend.title = element_blank())   
+  
 
-plt2 <- ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
-        geom_bar(stat='identity') +
-        theme_bw() +
-        scale_x_discrete(labels=NULL)  + theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
+plt2<- ggplot(forplot2, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) +
+  geom_col() + theme_bw() +
+  scale_x_discrete(labels=NULL) + labs(x = '') +
+  theme(legend.text = element_text(size=6),legend.title = element_blank())
 
-ggarrange(plt1, plt2, common.legend = TRUE, legend = "bottom")
+ggarrange(plt1, plt2, nrow = 2,ncol=1, legend = "right")
 ```  
 
 It can be seen excessive heat and tornadoes are the ones to make more injuries and to have more fatalities. Some attention must be given to flash floods too, which are very deadly.  
 
-Now, a look at what happened in each state during this time.  
-
-```{r cache=T}
-healthforstate <- NOAAdata0510 %>% group_by(EVTYPE,STATE) %>%
-        summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES),
-                  .groups = 'keep') %>% 
-        filter(Injuries > 100)  
-
-summary(healthforstate)[,3:4]  
-
-plt3<-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
-        geom_bar(stat='identity') +
-        facet_wrap(. ~ STATE) +
-        theme_bw() +
-        scale_x_discrete(labels=NULL) + 
-  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
-
-
-plt4<-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
-        geom_bar(stat='identity') +
-        facet_wrap(. ~ STATE) +
-        theme_bw() +
-        scale_x_discrete(labels=NULL)  + 
-  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
-
-ggarrange(plt3, plt4, common.legend = TRUE, legend = "bottom")
-
-```  
-
-Tornadoes seem to be a big problem for health in most states, but excessive heat hits Missouri very hard.  
-
 #### Across the United States, which types of events have the greatest economic consequences?  
 
-A general look at the United States at total damage amount for properties and crops for each type of event during the period from 2005 to 2010. A summary and bar plots are appropriate to see this.  
+A general look at the United States at total damage amount for properties and crops for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this.  
 
 ```{r cache=T}
 dmg <- NOAAdata0510 %>% group_by(EVTYPE) %>%
-        summarise(Properties = sum(prop), Crops = sum(crop) ) %>% 
-        filter(Crops > 1e8)  
+        summarise(Properties = sum(prop), Crops = sum(crop) )  
 
-summary(dmg)[,2:3]  
+forplot5 <- dmg %>% arrange(desc(Properties)) %>% head(n = 2)
+forplot6 <- dmg %>% arrange(desc(Crops)) %>% head(n = 2)
 
-plt5<-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) + 
-        geom_bar(stat='identity') +
-        theme_bw() +
-        scale_x_discrete(labels=NULL)+ theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
+plt5<-ggplot(forplot5, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) +
+  geom_col() + theme_bw() + scale_x_discrete(labels=NULL) + 
+  labs(x = '', y ='Property damage in dollars') +
+  theme(legend.text = element_text(size=6),legend.title = element_blank()) 
+  
 
 
-plt6<-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) + 
-        geom_bar(stat='identity') +
-        theme_bw() +
-        scale_x_discrete(labels=NULL)+ theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
-  labs(x = '')
+plt6<-ggplot(forplot6, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) +
+  geom_col() + theme_bw() + scale_x_discrete(labels=NULL) + 
+  labs(x = '', y ='Crop damage in dollars') +
+  theme(legend.text = element_text(size=6),legend.title = element_blank())
 
-ggarrange(plt5, plt6, common.legend = TRUE, legend = "bottom")
+ggarrange(plt5, plt6,nrow = 2, legend = "right")
 
 ```  
 
-It can be seen floods and hurricanes are the ones to make more property and crop damage. Some attention must be given to drought too, which costs the highest to crops.  
-
+It can be seen floods, hurricanes and drought are the ones to make more property and crop damage.
 
 
 

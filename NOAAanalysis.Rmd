@@ -1,0 +1,211 @@
+---
+title: "Weather events and its consequences across the United States"
+author: "Wildson B B Lima"
+date: "22/10/2020"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+-------  
+
+## Synopsis
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.  
+
+This analysis address the following questions:  
+
+* Across the United States, which types of events are most harmful with respect to population health?  
+
+* Across the United States, which types of events have the greatest economic consequences?  
+
+More infomartion about the dataset can be found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf) and [here](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+-------  
+
+## Data Processing  
+First, load the R libraries that will be used and set system locale to avoid conflits  
+
+```{r}
+library(ggplot2, warn.conflicts = F)
+library(dplyr, quietly = T, warn.conflicts = F)
+library(data.table, quietly = T, warn.conflicts = F)
+Sys.setlocale('LC_ALL','English')  
+```  
+
+Now start by creating a directory to store data and figures, download the data from the web then load into R.  
+Also, create a text file which states the url and time/timezone of download.  
+
+```{r cache=T}
+datadir <- './data'
+figuredir <- './figures'
+dataurl <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+datafilepath <- paste0(datadir,'/NOAAdata.csv.bz2')
+
+
+if(!dir.exists(datadir)){
+        dir.create(datadir)
+}
+
+if(!file.exists(datafilepath)){
+        
+        download.file(url = dataurl,destfile = datafilepath,method = 'curl')
+        
+        time <- as.character(Sys.time())
+        timezone <- Sys.timezone()
+        
+        downloadinfo <- data.frame(list(time = time, 
+                             format = "%Y-%m-%d %H:%M:%S",
+                             timezone = timezone))
+        
+        write.table(x = downloadinfo,
+                    file = paste0(datadir,'/downloadinfo.txt'),
+                    row.names = F)
+}
+
+NOAAdata <- fread(file = datafilepath,data.table = F)
+
+if(!dir.exists(figuredir)){
+        dir.create(figuredir)
+}
+
+
+```  
+
+Some preprocessing will need to be done.
+
+First, transform begin dates (**BGN_DATE**) from character to date format.
+
+```{r cache=T}
+NOAAdata <- NOAAdata %>% mutate(BGN_DATE = strptime(BGN_DATE, '%m/%d/%Y %H:%M:%S'))
+```  
+
+Now it's a good time to filter the more recent events to work with and select the columns of interest. Here, filter data from 2005 to 2010 and select state, county code, event type, fatalities, injuries, property damages and crop damage. 
+
+```{r cache=T}
+NOAAdata0510 <- NOAAdata %>% 
+        filter(between(BGN_DATE, '2005-01-01','2010-12-31')) %>% 
+        select(BGN_DATE,STATE,COUNTY,EVTYPE,
+               FATALITIES,INJURIES,PROPDMG,
+               PROPDMGEXP,CROPDMG,CROPDMGEXP)
+```  
+
+Now give proper class to all the variables that need it.  
+
+```{r cache=T}
+NOAAdata0510 <- NOAAdata0510 %>%
+        mutate(STATE = as.factor(STATE), COUNTY = as.factor(COUNTY), EVTYPE = as.factor(EVTYPE))
+```  
+
+To deal with property and crop damage properly, we need a function to turn their values into actual amount considering their units.
+
+```{r}
+actualamount <-function(cost, unit){
+        if(unit == 'K'){
+                return((cost*1e3))
+        }else if(unit == 'M'){
+                return(cost*1e6)
+        }else if(unit == 'B'){
+                return(cost*1e9)
+        }else{
+                return(cost)
+        }
+}
+```  
+
+Now use this function to transform those values to proper use.  
+
+```{r cache=T}
+NOAAdata0510 <- NOAAdata0510 %>% 
+        mutate(prop = mapply(actualamount, PROPDMG,PROPDMGEXP),
+               crop = mapply(actualamount,CROPDMG,CROPDMGEXP))
+```
+
+---  
+
+## Results
+
+#### Across the United States, which types of events are most harmful with respect to population health?  
+
+First, a general look at the United States at total injuries and fatalities for each type of event during the period from 2005 to 2010. A summary and bar plots are appropriate to see this.  
+
+```{r cache=T}
+health <- NOAAdata0510 %>% group_by(EVTYPE) %>%
+        summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES) ) %>% 
+        filter(Injuries > 100)  
+
+summary(health)[,2:3]  
+
+ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
+        geom_bar(stat='identity') +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+
+
+ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
+        geom_bar(stat='identity') +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+```  
+
+It can be seen excessive heat and tornadoes are the ones to make more injuries and to have more fatalities. Some attention must be given to flash floods too, which are very deadly.  
+
+Now, a look at what happened in each state during this time.  
+
+```{r cache=T}
+healthforstate <- NOAAdata0510 %>% group_by(EVTYPE,STATE) %>%
+        summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES),
+                  .groups = 'keep') %>% 
+        filter(Injuries > 100)  
+
+summary(healthforstate)[,3:4]  
+
+ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
+        geom_bar(stat='identity') +
+        facet_wrap(. ~ STATE) +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+
+
+ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
+        geom_bar(stat='identity') +
+        facet_wrap(. ~ STATE) +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+```  
+
+Tornadoes seem to be a big problem for health in most states, but excessive heat hits Missouri very hard.  
+
+#### Across the United States, which types of events have the greatest economic consequences?  
+
+A general look at the United States at total damage amount for properties and crops for each type of event during the period from 2005 to 2010. A summary and bar plots are appropriate to see this.  
+
+```{r cache=T}
+dmg <- NOAAdata0510 %>% group_by(EVTYPE) %>%
+        summarise(Properties = sum(prop), Crops = sum(crop) ) %>% 
+        filter(Crops > 1e8)  
+
+summary(dmg)[,2:3]  
+
+ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) + 
+        geom_bar(stat='identity') +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+
+
+ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) + 
+        geom_bar(stat='identity') +
+        theme_bw() +
+        scale_x_discrete(labels=NULL)
+```  
+
+It can be seen floods and hurricanes are the ones to make more property and crop damage. Some attention must be given to drought too, which costs the highest to crops.  
+
+
+
+
+

@@ -34,6 +34,7 @@ First, load the R libraries that will be used and set system locale to avoid con
 library(ggplot2, warn.conflicts = F)
 library(dplyr, quietly = T, warn.conflicts = F)
 library(data.table, quietly = T, warn.conflicts = F)
+library(ggpubr, quietly = T, warn.conflicts = F)
 Sys.setlocale('LC_ALL','English')  
 ```  
 
@@ -140,16 +141,20 @@ health <- NOAAdata0510 %>% group_by(EVTYPE) %>%
 
 summary(health)[,2:3]  
 
-ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
+plt1<- ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
         geom_bar(stat='identity') +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL) + 
+  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
 
-
-ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
+plt2 <- ggplot(health, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
         geom_bar(stat='identity') +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL)  + theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
+
+ggarrange(plt1, plt2, common.legend = TRUE, legend = "bottom")
 ```  
 
 It can be seen excessive heat and tornadoes are the ones to make more injuries and to have more fatalities. Some attention must be given to flash floods too, which are very deadly.  
@@ -164,18 +169,25 @@ healthforstate <- NOAAdata0510 %>% group_by(EVTYPE,STATE) %>%
 
 summary(healthforstate)[,3:4]  
 
-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
+plt3<-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) + 
         geom_bar(stat='identity') +
         facet_wrap(. ~ STATE) +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL) + 
+  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
 
 
-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
+plt4<-ggplot(healthforstate, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) + 
         geom_bar(stat='identity') +
         facet_wrap(. ~ STATE) +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL)  + 
+  theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
+
+ggarrange(plt3, plt4, common.legend = TRUE, legend = "bottom")
+
 ```  
 
 Tornadoes seem to be a big problem for health in most states, but excessive heat hits Missouri very hard.  
@@ -191,16 +203,21 @@ dmg <- NOAAdata0510 %>% group_by(EVTYPE) %>%
 
 summary(dmg)[,2:3]  
 
-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) + 
+plt5<-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) + 
         geom_bar(stat='identity') +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL)+ theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
 
 
-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) + 
+plt6<-ggplot(dmg, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) + 
         geom_bar(stat='identity') +
         theme_bw() +
-        scale_x_discrete(labels=NULL)
+        scale_x_discrete(labels=NULL)+ theme(legend.text = element_text(size=6),legend.title = element_blank()) + 
+  labs(x = '')
+
+ggarrange(plt5, plt6, common.legend = TRUE, legend = "bottom")
+
 ```  
 
 It can be seen floods and hurricanes are the ones to make more property and crop damage. Some attention must be given to drought too, which costs the highest to crops.  

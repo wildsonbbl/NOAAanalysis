@@ -39,7 +39,7 @@ Sys.setlocale('LC_ALL','English')
 ```  
 
 Now start by creating a directory to store data and figures, download the data from the web then load into R.  
-Also, create a text file which states the url and time/timezone of download.  
+While doing it, create a text file which states the url and time/timezone of download.  
 
 ```{r cache=T}
 datadir <- './data'
@@ -102,7 +102,7 @@ NOAAdata0510 <- NOAAdata0510 %>%
         mutate(STATE = as.factor(STATE), COUNTY = as.factor(COUNTY), EVTYPE = as.factor(EVTYPE))
 ```  
 
-To deal with property and crop damage properly, we need a function to turn their values into actual amount considering their units.
+To deal with property and crop damage properly, we need a function to turn their data set values into actual amount of damage considering their unit of magnitude.
 
 ```{r}
 actualamount <-function(cost, unit){
@@ -118,7 +118,7 @@ actualamount <-function(cost, unit){
 }
 ```  
 
-Now use this function to transform those values to proper use.  
+Now use this function to transform data set values into actual amount.  
 
 ```{r cache=T}
 NOAAdata0510 <- NOAAdata0510 %>% 
@@ -132,59 +132,73 @@ NOAAdata0510 <- NOAAdata0510 %>%
 
 #### Across the United States, which types of events are most harmful with respect to population health?  
 
-First, a general look at the United States at total injuries and fatalities for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this.  
+For that, we need a general look at the United States' total injuries and fatalities for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this, but it is necessary to retrieve that information from the data set first.  
 
 ```{r cache=T}
 health <- NOAAdata0510 %>% group_by(EVTYPE) %>%
         summarise(Injuries = sum(INJURIES), Fatalities = sum(FATALITIES) )
-
-forplot1 <- health %>% arrange(desc(Injuries)) %>% head(n = 4)
-forplot2 <- health %>% arrange(desc(Fatalities)) %>% head(n = 4)
-
-plt1<- ggplot(forplot1, aes(fill = EVTYPE,x = EVTYPE, y = Injuries)) +
-  geom_col() + theme_bw() +
-  scale_x_discrete(labels=NULL) + labs(x = '') +
-  theme(legend.text = element_text(size=6),legend.title = element_blank())   
-  
-
-plt2<- ggplot(forplot2, aes(fill = EVTYPE,x = EVTYPE, y = Fatalities)) +
-  geom_col() + theme_bw() +
-  scale_x_discrete(labels=NULL) + labs(x = '') +
-  theme(legend.text = element_text(size=6),legend.title = element_blank())
-
-ggarrange(plt1, plt2, nrow = 2,ncol=1, legend = "right")
 ```  
 
-It can be seen excessive heat and tornadoes are the ones to make more injuries and to have more fatalities. Some attention must be given to flash floods too, which are very deadly.  
+Select the 15 highest cases for each outcome and organize data for plotting.
+
+```{r cache=T}
+forinjuries <- health %>% select(EVTYPE, Cases = Injuries) %>%
+  arrange(desc(Cases)) %>% 
+  head(n = 15) %>% mutate(plot = 'Injuries')
+forfatalities <- health %>% select(EVTYPE, Cases = Fatalities) %>%
+  arrange(desc(Cases)) %>% 
+  head(n = 15) %>% mutate(plot = 'Fatalities')
+
+healthplot <- rbind(forinjuries,forfatalities)
+```  
+
+Now, plot.  
+
+```{r}
+plt1<- ggplot(healthplot, aes(fill = EVTYPE,x = EVTYPE, y = Cases)) +
+  geom_col() + theme_bw() + facet_wrap(. ~ plot,nrow = 2,scales = 'free_y') +
+  scale_x_discrete(labels=NULL) + labs(x = '') +
+  theme(legend.text = element_text(size=6),
+        legend.title = element_blank(), legend.position = 'top')
+print(plt1)
+```  
+
+It can be seen **excessive heat** and **tornadoes** are the ones to make more injuries and to have more fatalities. Some attention must be given to **flash floods** events too, which were very deadly during the period, even though didn't have much injuries.  
 
 #### Across the United States, which types of events have the greatest economic consequences?  
 
-A general look at the United States at total damage amount for properties and crops for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this.  
+For that we need a general look at the United States' total amount of damage for properties and crops for each type of event during the period from 2005 to 2010. Bar plots are appropriate to see this, but it is necessary to retrieve that information from the data set first.  
 
 ```{r cache=T}
 dmg <- NOAAdata0510 %>% group_by(EVTYPE) %>%
-        summarise(Properties = sum(prop), Crops = sum(crop) )  
-
-forplot5 <- dmg %>% arrange(desc(Properties)) %>% head(n = 2)
-forplot6 <- dmg %>% arrange(desc(Crops)) %>% head(n = 2)
-
-plt5<-ggplot(forplot5, aes(fill = EVTYPE,x = EVTYPE, y = Properties)) +
-  geom_col() + theme_bw() + scale_x_discrete(labels=NULL) + 
-  labs(x = '', y ='Property damage in dollars') +
-  theme(legend.text = element_text(size=6),legend.title = element_blank()) 
-  
-
-
-plt6<-ggplot(forplot6, aes(fill = EVTYPE,x = EVTYPE, y = Crops)) +
-  geom_col() + theme_bw() + scale_x_discrete(labels=NULL) + 
-  labs(x = '', y ='Crop damage in dollars') +
-  theme(legend.text = element_text(size=6),legend.title = element_blank())
-
-ggarrange(plt5, plt6,nrow = 2, legend = "right")
-
+        summarise(Properties = sum(prop), Crops = sum(crop) )
 ```  
 
-It can be seen floods, hurricanes and drought are the ones to make more property and crop damage.
+Select the 10 highest amount of damage for each damaged type and organize data for plotting.  
+
+```{r cache=T}
+forproperties <- dmg %>% select(EVTYPE, Amount = Properties) %>%
+  arrange(desc(Amount)) %>% 
+  head(n = 10) %>% mutate(plot = 'Damaged properties')
+forcrop <- dmg %>% select(EVTYPE, Amount = Crops) %>%
+  arrange(desc(Amount)) %>% 
+  head(n = 10) %>% mutate(plot = 'Damaged crops')
+
+dmgplot <- rbind(forproperties,forcrop)
+```  
+
+Now, plot.
+
+```{r}
+plt2 <- ggplot(dmgplot, aes(fill = EVTYPE,x = EVTYPE, y = Amount/1e6)) +
+  geom_col() + theme_bw() + facet_wrap(. ~ plot,nrow = 2,scales = 'free_y') +
+  scale_x_discrete(labels=NULL) + labs(x = '',y = 'Amount of damage (in millions of $)') +
+  theme(legend.text = element_text(size=6),
+        legend.title = element_blank(), legend.position = 'top')
+print(plt2)
+```
+
+It can be seen **floods** have cost an absurd amount to properties, getting higher than 120 **billion** dollars during the period. Crops have seen a huge amount of damage due to this type too, but **drought** is the event that cost the most to crops during this period, getting as high as 4 **billion**. 
 
 
 
